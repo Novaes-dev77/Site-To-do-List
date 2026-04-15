@@ -1,0 +1,215 @@
+<<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Minhas Tarefas</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+body{
+  font-family:'Poppins',sans-serif;
+  margin:0;
+  padding:20px;
+  color:#fff;
+  background-size: 800% 800%;
+  animation: gradientMove 15s ease infinite;
+}
+
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Temas */
+.theme-default { background: linear-gradient(270deg,#0f172a,#1e293b,#334155,#1e293b); }
+.theme-roxo { background: linear-gradient(270deg,#1a002b,#3a0ca3,#7209b7,#3a0ca3); }
+.theme-verde { background: linear-gradient(270deg,#001f1f,#065f46,#10b981,#065f46); }
+.theme-vermelho { background: linear-gradient(270deg,#2b0000,#7f1d1d,#dc2626,#7f1d1d); }
+
+.container{
+  max-width:1100px;margin:auto;
+  backdrop-filter:blur(12px);
+  background:rgba(30,41,59,0.85);
+  padding:25px;border-radius:16px;
+  box-shadow:0 20px 60px rgba(0,0,0,.6)
+}
+
+h1{text-align:center;margin-bottom:20px}
+
+.form{
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;
+  gap:10px;margin-bottom:20px
+}
+
+input,select,button{
+  padding:10px;border-radius:8px;border:none
+}
+
+input,select{background:#1e293b;color:#fff;border:1px solid #475569}
+button{background:#6366f1;color:#fff;cursor:pointer}
+
+.filters{display:flex;gap:10px;margin-bottom:20px}
+
+.section{background:rgba(255,255,255,0.05);padding:15px;border-radius:10px;margin-top:15px}
+
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;border-bottom:1px solid #444;text-align:center}
+tr:hover{background:#475569}
+
+.alta{color:#f87171;font-weight:bold}
+.media{color:#facc15}
+.baixa{color:#34d399}
+
+.done{opacity:.5;text-decoration:line-through}
+
+.slide{animation:slideUp .4s ease}
+@keyframes slideUp{
+ from{transform:translateY(20px);opacity:0}
+ to{transform:translateY(0);opacity:1}
+}
+
+.badge{
+  font-size:11px;
+  background:#0ea5e9;
+  padding:3px 6px;
+  border-radius:6px;
+  margin-top:4px;
+  display:inline-block
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>📋 Minhas Tarefas</h1>
+
+<div style="text-align:center;margin-bottom:15px;">
+  <label>🎨 Tema:</label>
+  <select id="themeSelector" onchange="changeTheme()">
+    <option value="default">Padrão</option>
+    <option value="roxo">Roxo</option>
+    <option value="verde">Verde</option>
+    <option value="vermelho">Vermelho</option>
+  </select>
+</div>
+
+<div class="form">
+<input id="taskInput" placeholder="Tarefa">
+<select id="priority">
+<option value="baixa">Baixa</option>
+<option value="media">Média</option>
+<option value="alta">Alta</option>
+</select>
+<input type="date" id="date">
+<input type="time" id="time">
+<input type="number" id="duration" placeholder="Horas">
+<button onclick="addTask()">+</button>
+</div>
+
+<div class="filters">
+<select id="filterPriority" onchange="render()">
+<option value="">Todas</option>
+<option value="alta">Alta</option>
+<option value="media">Média</option>
+<option value="baixa">Baixa</option>
+</select>
+<input type="date" id="filterDate" onchange="render()">
+<button onclick="sortTasks()">Ordenar</button>
+</div>
+
+<div class="section">
+<h2>🕒 Pendentes</h2>
+<table><tbody id="pending"></tbody></table>
+</div>
+
+<div class="section">
+<h2>✅ Concluídas</h2>
+<table><tbody id="done"></tbody></table>
+</div>
+</div>
+
+<script>
+let tasks=JSON.parse(localStorage.getItem('tasks'))||[];
+let theme=localStorage.getItem('theme')||'default';
+
+document.body.classList.add('theme-'+theme);
+document.addEventListener('DOMContentLoaded',()=>{
+ document.getElementById('themeSelector').value=theme;
+});
+
+function changeTheme(){
+ const selected=document.getElementById('themeSelector').value;
+ document.body.className='';
+ document.body.classList.add('theme-'+selected);
+ localStorage.setItem('theme',selected);
+}
+
+function formatPrazo(t){
+ if(!t.date||!t.time)return '-';
+ return `${t.date.split('-').reverse().join('/')} às ${t.time}`;
+}
+
+function render(){
+ const p=document.getElementById('pending');
+ const d=document.getElementById('done');
+ p.innerHTML='';d.innerHTML='';
+
+ const fp=document.getElementById('filterPriority').value;
+ const fd=document.getElementById('filterDate').value;
+
+ tasks.forEach((t,i)=>{
+ if(fp&&t.priority!==fp)return;
+ if(fd&&t.date!==fd)return;
+
+ const tr=document.createElement('tr');
+ tr.classList.add('slide');
+ if(t.done)tr.classList.add('done');
+
+ tr.innerHTML=`
+ <td>${t.text}<br>
+ <span class="badge">📅 ${formatPrazo(t)}</span>
+ <span class="badge">⏱ ${t.duration||0}h</span></td>
+ <td class="${t.priority}">${t.priority}</td>
+ <td>
+ <button onclick="toggle(${i})">✔</button>
+ <button onclick="edit(${i})">✏</button>
+ <button onclick="removeTask(${i})">✖</button>
+ </td>`;
+
+ t.done?d.appendChild(tr):p.appendChild(tr);
+ });
+
+ localStorage.setItem('tasks',JSON.stringify(tasks));
+}
+
+function addTask(){
+ const text=document.getElementById('taskInput').value.trim();
+ if(!text)return;
+ const priority=document.getElementById('priority').value;
+ const date=document.getElementById('date').value;
+ const time=document.getElementById('time').value;
+ const duration=document.getElementById('duration').value;
+
+ tasks.push({text,priority,date,time,duration,done:false});
+ document.getElementById('taskInput').value='';
+ render();
+}
+
+function toggle(i){tasks[i].done=!tasks[i].done;render();}
+function removeTask(i){tasks.splice(i,1);render();}
+function edit(i){
+ const n=prompt('Editar:',tasks[i].text);
+ if(n){tasks[i].text=n;render();}
+}
+
+function sortTasks(){
+ tasks.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+ render();
+}
+
+render();
+</script>
+
+</body>
+</html>
